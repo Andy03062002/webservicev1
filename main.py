@@ -1,12 +1,22 @@
-#HORA LOCAL TOMANDO LA UBICACION DEL SISTEMA 
+# -*- coding: utf-8 -*-
+# HORA LOCAL TOMANDO LA UBICACION DEL SISTEMA 
 from fastapi import FastAPI 
 from datetime import datetime
 from zoneinfo import ZoneInfo 
+from pydantic import BaseModel
 
-ahora = datetime.now()
-ahora_actual = ahora.time()
+# Modelos
+class Texto(BaseModel):
+    texto: str
+
+class Cliente(BaseModel):
+    id: int
+    nombre: str
+    correo: str
+
 app = FastAPI()
 
+# Diccionario de zonas horarias
 ciudad_hora = {
     "CO": "America/Bogota",      # Colombia
     "EC": "America/Guayaquil",   # Ecuador
@@ -19,10 +29,7 @@ ciudad_hora = {
 
 @app.get("/")
 async def root():
-    return {"message":"hola"}
-
-
-
+    return {"message": "hola"}
 
 @app.get("/time/{iso_code}")
 async def time(iso_code: str):
@@ -30,7 +37,6 @@ async def time(iso_code: str):
     timezone_str = ciudad_hora.get(iso)
     tz = ZoneInfo(timezone_str)
     return {"time": datetime.now(tz)}
-
 
 @app.get("/temperatura/{escala}/{valor}")
 async def temperatura(escala: str, valor: float):
@@ -42,3 +48,35 @@ async def temperatura(escala: str, valor: float):
         return {"celsius": round(resultado, 2)}
     else:
         return {"error": "Usa C o F como escala"}
+
+# Simulación de base de datos
+db_clientes: list[Cliente] = []
+
+@app.post("/clientes/", response_model=Cliente)
+async def crear_cliente(cliente_info: Cliente):
+    cliente = Cliente.model_validate(cliente_info.model_dump())
+    db_clientes.append(cliente)
+    return cliente
+
+@app.get("/clientes/", response_model=list[Cliente])
+async def listar_clientes():
+    return db_clientes
+
+@app.post("/analizar_texto")
+async def analizar_texto(data: Texto):
+    texto = data.texto.strip()
+    palabras = texto.split()
+    longitud = len(texto)
+    cantidad_palabras = len(palabras)
+    cantidad_vocales = sum(1 for c in texto.lower() if c in "aeiouaeiou")
+
+
+
+    return {
+        "texto_original": texto,
+        "caracteres": longitud,
+        "palabras": cantidad_palabras,
+        "vocales": cantidad_vocales,
+        "primera_palabra": palabras[0] if palabras else None,
+        "ultima_palabra": palabras[-1] if palabras else None
+    }
