@@ -1,82 +1,90 @@
 # -*- coding: utf-8 -*-
-# HORA LOCAL TOMANDO LA UBICACION DEL SISTEMA 
-from fastapi import FastAPI 
-from datetime import datetime
-from zoneinfo import ZoneInfo 
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-
-# Modelos
-class Texto(BaseModel):
-    texto: str
-
-class Cliente(BaseModel):
-    id: int
-    nombre: str
-    correo: str
+import mysql.connector
+from gmail_client import enviar_correo
 
 app = FastAPI()
 
-# Diccionario de zonas horarias
-ciudad_hora = {
-    "CO": "America/Bogota",      # Colombia
-    "EC": "America/Guayaquil",   # Ecuador
-    "PE": "America/Lima",        # Per�
-    "MX": "America/Mexico_City", # M�xico
-    "AR": "America/Argentina/Buenos_Aires", # Argentina
-    "CL": "America/Santiago",    # Chile
-    "VE": "America/Caracas",     # Venezuela
-}
+# Configurar CORS
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# Modelos de datos
+class Usuario(BaseModel):
+    nombres: str
+    edad: int
+    correo: str
+    usuario: str
+    password: str
+
+class LoginRequest(BaseModel):
+    usuario: str
+    password: str
+
+# Conexión a MySQL
+def get_connection():
+    return mysql.connector.connect(
+        host="localhost",
+        user="root",
+        password="root",
+        database="fitdb"
+    )
 
 @app.get("/")
 async def root():
-    return {"message": "hola"}
+    return {"message": "API funcionando correctamente"}
 
-@app.get("/time/{iso_code}")
-async def time(iso_code: str):
-    iso = iso_code.upper()
-    timezone_str = ciudad_hora.get(iso)
-    tz = ZoneInfo(timezone_str)
-    return {"time": datetime.now(tz)}
+# Endpoint: Registrar usuario
+@app.post("/register")
+async def register(data: Usuario):
+    try:
+        conn = get_connection()
+        cursor = conn.cursor()
+        sql = "INSERT INTO usuarios (nombres, edad, correo, usuario, password) VALUES (%s, %s, %s, %s, %s)"
+        cursor.execute(sql, (data.nombres, data.edad, data.correo, data.usuario, data.password))
+        conn.commit()
+        cursor.close()
+        conn.close()
 
-@app.get("/temperatura/{escala}/{valor}")
-async def temperatura(escala: str, valor: float):
-    if escala.upper() == "C":
-        resultado = (valor * 9/5) + 32
-        return {"fahrenheit": round(resultado, 2)}
-    elif escala.upper() == "F":
-        resultado = (valor - 32) * 5/9
-        return {"celsius": round(resultado, 2)}
-    else:
-        return {"error": "Usa C o F como escala"}
+        # Enviar correo de notificación
+        asunto = "Registro Exitoso - 17Fitness"
+        cuerpo = f"Hola {data.nombres},\n\nTu registro en el sistema de rutinas personalizadas ha sido exitoso.\n¡Bienvenido a 17Fitness!"
+        enviar_correo(data.correo, asunto, cuerpo)
 
-# Simulaci�n de base de datos
-db_clientes: list[Cliente] = []
+        return {"status": "success", "message": f"Usuario {data.usuario} registrado correctamente y correo enviado."}
 
-@app.post("/clientes/", response_model=Cliente)
-async def crear_cliente(cliente_info: Cliente):
-    cliente = Cliente.model_validate(cliente_info.model_dump())
-    db_clientes.append(cliente)
-    return cliente
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
 
-@app.get("/clientes/", response_model=list[Cliente])
-async def listar_clientes():
-    return db_clientes
+# Endpoint: Login
+@app.post("/login")
+async def login(data: LoginRequest):
+    try:
+        conn = get_connection()
+        cursor = conn.cursor(dictionary=True)
+        sql = "SELECT * FROM usuarios WHERE correo = %s AND password = %s"
+        cursor.execute(sql, (data.usuario, data.password))
 
-@app.post("/analizar_texto")
-async def analizar_texto(data: Texto):
-    texto = data.texto.strip()
-    palabras = texto.split()
-    longitud = len(texto)
-    cantidad_palabras = len(palabras)
-    cantidad_vocales = sum(1 for c in texto.lower() if c in "aeiouaeiou")
+        user = cursor.fetchone()
+        cursor.close()
+        conn.close()
 
+        if user:
+            # Enviar correo de notificación
+            asunto = "Inicio de Sesión Detectado - 17Fitness"
+            cuerpo = f"Hola {user['nombres']},\n\nSe ha detectado un nuevo inicio de sesión en tu cuenta de 17Fitness."
+            enviar_correo(user['correo'], asunto, cuerpo)
 
+            return {"status": "success", "message": f"Inicio de sesión exitoso. Bienvenido, {user['nombres']}!"}
+        else:
+            return {"status": "error", "message": "Usuario o contraseña incorrectos"}
 
-    return {
-        "texto_original": texto,
-        "caracteres": longitud,
-        "palabras": cantidad_palabras,
-        "vocales": cantidad_vocales,
-        "primera_palabra": palabras[0] if palabras else None,
-        "ultima_palabra": palabras[-1] if palabras else None
-    }
+    except Exception as e:
+        return {"status": "error", "message": str(e)}

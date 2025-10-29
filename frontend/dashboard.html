@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Dashboard - Fit IA</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #f5f5f5;
+            margin: 0;
+            padding: 0;
+        }
+
+        header {
+            background: #4CAF50;
+            color: white;
+            padding: 1rem;
+            text-align: center;
+        }
+
+        main {
+            padding: 2rem;
+        }
+
+        h1 {
+            margin-bottom: 1rem;
+        }
+
+        .card {
+            background: white;
+            padding: 1rem;
+            margin-bottom: 1rem;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h2>Bienvenido, {{ usuario }}</h2>
+    </header>
+    <main>
+        <div class="card">
+            <h3>Información de usuario</h3>
+            <p>Nombre: {{ nombres }}</p>
+            <p>Correo: {{ correo }}</p>
+            <p>Edad: {{ edad }}</p>
+        </div>
+
+        <div class="card">
+            <h3>Acciones</h3>
+            <ul>
+                <li><a href="#">Ver rutinas recomendadas</a></li>
+                <li><a href="#">Actualizar perfil</a></li>
+                <li><a href="#">Cerrar sesión</a></li>
+            </ul>
+        </div>
+    </main>
+</body>
+</html>

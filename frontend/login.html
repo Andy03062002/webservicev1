@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Inicio de Sesión</title>
+    <link rel="stylesheet" href="style.css">
+    <style>
+        form {
+            background: white;
+            display: inline-block;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 0 10px #ccc;
+        }
+
+        input {
+            display: block;
+            width: 250px;
+            margin: 10px auto;
+            padding: 10px;
+            border-radius: 5px;
+            border: 1px solid #ccc;
+        }
+
+        button {
+            background: #2196F3;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+            button:hover {
+                background: #0b7dda;
+            }
+
+        .msg {
+            margin-top: 15px;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>Iniciar Sesion</h2>
+        <form id="loginForm">
+            <input type="email" id="correo" placeholder="Correo electronico" required>
+            <input type="password" id="password" placeholder="Password" required>
+            <button type="submit">Entrar</button>
+            <p>No tienes una cuenta? <a href="registro.html">Registrate</a></p>
+            <div class="msg" id="mensaje"></div>
+        </form>
+    </div>
+
+    <script>
+        document.getElementById("loginForm").addEventListener("submit", async (e) => {
+            e.preventDefault();
+
+            const data = {
+                usuario: document.getElementById("correo").value,
+                password: document.getElementById("password").value
+            };
+
+            const res = await fetch("http://127.0.0.1:8000/login", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(data)
+            });
+
+            const result = await res.json();
+            const mensajeDiv = document.getElementById("mensaje");
+
+            if (res.ok && result.status === "success") {
+                mensajeDiv.innerText = result.message;
+                mensajeDiv.style.color = "green";
+                // Redirigir al dashboard después de 1 segundo
+                setTimeout(() => {
+                    window.location.href = "dashboard.html";
+                }, 1000);
+            } else {
+                mensajeDiv.innerText = result.message || "Error al iniciar sesión";
+                mensajeDiv.style.color = "red";
+            }
+        });
+    </script>
+</body>
+</html>
